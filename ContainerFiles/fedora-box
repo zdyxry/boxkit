@@ -4,11 +4,7 @@ LABEL com.github.containers.toolbox="true" \
       usage="This image is meant to be used with the toolbox or distrobox command" \
       summary="A cloud-native terminal experience powered by Fedora" 
 
-COPY ./packages/fedora-box.packages /tmp/toolbox-packages
-
-RUN dnf -y upgrade && \
-    dnf -y install $(grep -v '^#\|^$' /tmp/toolbox-packages) && \
-    dnf clean all
+# RUN dnf -y upgrade
 
 # Set up dependencies
 RUN git clone https://github.com/89luca89/distrobox.git --single-branch /tmp/distrobox && \
@@ -34,6 +30,11 @@ RUN dnf copr enable -y kylegospo/distrobox-utils && \
 RUN dnf install -y \
     "https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm" \
     "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm" && \
+    dnf clean all
+
+COPY ./packages/fedora-box.packages /tmp/toolbox-packages
+
+RUN dnf -y install $(grep -v '^#\|^$' /tmp/toolbox-packages) && \
     dnf clean all
 
 # Cleanup
