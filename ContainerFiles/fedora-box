@@ -7,7 +7,7 @@ LABEL com.github.containers.toolbox="true" \
 COPY ./packages/fedora-box.packages /tmp/toolbox-packages
 
 RUN dnf -y upgrade && \
-    dnf -y install $(<tmp/toolbox-packages) && \
+    dnf -y install $(grep -v '^#\|^$' /tmp/toolbox-packages) && \
     dnf clean all
 
 # Set up dependencies
