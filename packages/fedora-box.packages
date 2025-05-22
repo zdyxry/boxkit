@@ -16,6 +16,9 @@ fd-find
 fzf
 ripgrep
 zoxide
+tokei
+tig
+gh
 
 # Shell
 fish
