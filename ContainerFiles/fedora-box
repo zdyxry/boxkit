@@ -32,12 +32,13 @@ RUN dnf install -y \
     "https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm" && \
     dnf clean all
 
-COPY ./packages/fedora-box.packages /tmp/toolbox-packages
-
 # Used for skipping the build cache
 ARG TIMESTAMP
 
-RUN dnf -y install $(grep -v '^#\|^$' /tmp/toolbox-packages) && \
+COPY ./packages/fedora-box.packages /tmp/toolbox-packages
+
+RUN dnf copr enable -y varlad/zellij && \
+    dnf -y install $(grep -v '^#\|^$' /tmp/toolbox-packages) && \
     dnf clean all
 
 # Cleanup

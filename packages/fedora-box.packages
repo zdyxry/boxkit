@@ -1,24 +1,26 @@
 # Editor
-vim
-neovim
+* neovim
+* vim
 
-# Program language 
-golang
-rust
-cargo
-uv
+# Program language
+* cargo
+* golang
+* rust
+* uv
 
 # Tools
-rclone
-atuin
-difftastic
-fd-find
-fzf
-ripgrep
-zoxide
-tokei
-tig
-gh
+* atuin
+* difftastic
+* fd-find
+* fzf
+* gh
+* rclone
+* ripgrep
+* tig
+* tokei
+* zellij
+* zoxide
 
 # Shell
-fish
+* fish
+
