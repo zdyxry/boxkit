@@ -34,6 +34,9 @@ RUN dnf install -y \
 
 COPY ./packages/fedora-box.packages /tmp/toolbox-packages
 
+# Used for skipping the build cache
+ARG TIMESTAMP
+
 RUN dnf -y install $(grep -v '^#\|^$' /tmp/toolbox-packages) && \
     dnf clean all
 

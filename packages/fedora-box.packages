@@ -1,5 +1,21 @@
 # Editor
 vim
+neovim
 
 # Program language 
 golang
+rust
+cargo
+uv
+
+# Tools
+rclone
+atuin
+difftastic
+fd-find
+fzf
+ripgrep
+zoxide
+
+# Shell
+fish

@@ -1,121 +1,150 @@
-# boxkit
+# go-containerregistry
 
-## What is boxkit ?
+[![GitHub Actions Build Status](https://github.com/google/go-containerregistry/workflows/Build/badge.svg)](https://github.com/google/go-containerregistry/actions?query=workflow%3ABuild)
+[![GoDoc](https://godoc.org/github.com/google/go-containerregistry?status.svg)](https://godoc.org/github.com/google/go-containerregistry)
+[![Code Coverage](https://codecov.io/gh/google/go-containerregistry/branch/main/graph/badge.svg)](https://codecov.io/gh/google/go-containerregistry)
 
-boxkit is a set of GitHub actions and skeleton files to build custom toolbox and distrobox images. Basically, clone this repo, make any changes you need, and then generate your custom images.
+## Introduction
 
-Note that boxkit can be used independently of Fedora or uBlue OS.
-boxkit requires you atleast understand the basics of [ContainerFiles](https://www.mankier.com/5/Containerfile) and [shell scripting.](https://www.shellscript.sh/)
+This is a golang library for working with container registries.
+It's largely based on the [Python library of the same name](https://github.com/google/containerregistry).
 
-## Base images
+The following diagram shows the main types that this library handles.
+![OCI image representation](images/ociimage.jpeg)
 
-You can use the Docker/OCI container image of practically any distribution as your base image to build your custom image off of. Note that the base images can also be used directly with distrobox/toolbox without any modifications.
+## Philosophy
 
-Here is a list of some base images you can use:
+The overarching design philosophy of this library is to define interfaces that present an immutable
+view of resources (e.g. [`Image`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1#Image),
+[`Layer`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1#Layer),
+[`ImageIndex`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1#ImageIndex)),
+which can be backed by a variety of medium (e.g. [registry](./pkg/v1/remote/README.md),
+[tarball](./pkg/v1/tarball/README.md), [daemon](./pkg/v1/daemon/README.md), ...).
 
-- [toolbx Community images](https://github.com/toolbx-images/images)
-- [uBlue toolboxes](https://github.com/ublue-os/toolboxes)
+To complement these immutable views, we support functional mutations that produce new immutable views
+of the resulting resource (e.g. [mutate](./pkg/v1/mutate/README.md)).  The end goal is to provide a
+set of versatile primitives that can compose to do extraordinarily powerful things efficiently and easily.
 
-Try to derive your custom images from these base images so we can all help maintain them over time, you can't have bling without good stock!
+Both the resource views and mutations may be lazy, eager, memoizing, etc, and most are optimized
+for common paths based on the tooling we have seen in the wild (e.g. writing new images from disk
+to the registry as a compressed tarball).
 
-Tag your image with `boxkit` to share with others!
 
-## How to use boxkit
+### Experiments
 
-### How everything is organized
+Over time, we will add new functionality under experimental environment variables listed here.
 
-- The ContainerFiles for the custom images are stored in the `ContainerFiles/` folder.
-- The setup scripts for the custom images (if needed) are stored in the `scripts/` folder.
-- The package lists for the setup scripts (if needed) are stored in the `packages/` folder.
-- The Github workflow that generates the images is `.github/workflows/build-boxkit.yml`
+| Env Var | Value(s) | What is does |
+|---------|----------|--------------|
+| `GGCR_EXPERIMENT_ESTARGZ` | `"1"` | ⚠️DEPRECATED⚠️: When enabled this experiment will direct `tarball.LayerFromOpener` to emit [estargz](https://github.com/opencontainers/image-spec/issues/815) compatible layers, which enable them to be lazily loaded by an appropriately configured containerd. |
 
-### How to make your own images
 
-1. Fork this repo.
-2. Add the ContainerFiles for your custom images to the `ContainerFiles/` folder.
-3. Add the setup scripts you want to use for your custom images (if needed) to the `scripts/` folder.
-4. Add the package list you want to use for your custom images (if needed) to the `packages/` folder.
-5. Add the name of the ContainerFiles of your custom images to the following section in `build-boxkit.yml`:
+### `v1.Image`
 
-```yaml
-jobs:
-  strategy:
-    matrix:
-      containerfile:
-      - [your_custom_image_1]
-      - [your_custom_image_2]
-```
+#### Sources
 
-**Note:** 
-- You can choose to only generate a single custom image if you want. 
-- You can remove the boxkit and fedora-example images provided in the boxkit repo and only generate your own custom images.
-- The `scripts/` and `packages/` folders are optional, you can generate your custom images without them, but they are highly recommended to use.
-- The name of your custom image and ContainerFile **MUST** be the same. <br>
+* [`remote.Image`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/remote#Image)
+* [`tarball.Image`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/tarball#Image)
+* [`daemon.Image`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/daemon#Image)
+* [`layout.Image`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/layout#Path.Image)
+* [`random.Image`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/random#Image)
 
-  e.g. If you want to create a custom image named *appbox-debian*, the corresponding ContainerFile must be named `appbox-debian` and must be stored inside the `ContainerFiles/` folder.
-- The URL for the generated images will be `ghcr.io/<username>/<image_name>` by default.
+#### Sinks
 
-### Signing your images
-Although optional, it is **Highly recommended** you use container signing for your images.
-To sign your images, follow the steps below:
+* [`remote.Write`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/remote#Write)
+* [`tarball.Write`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/tarball#Write)
+* [`daemon.Write`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/daemon#Write)
+* [`legacy/tarball.Write`](https://godoc.org/github.com/google/go-containerregistry/pkg/legacy/tarball#Write)
+* [`layout.AppendImage`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/layout#Path.AppendImage)
 
-1. [Install `cosign`.](https://docs.sigstore.dev/cosign/system_config/installation/)
-2. Generate cosign keypairs. <br>
-   When it asks you to enter a password, **DONOT ENTER A PASSWORD,** Just press enter.
+### `v1.ImageIndex`
 
-   ```bash
-   cosign generate-key-pair
-   ```
+#### Sources
 
-   This will create two files named `cosign.pub` and `cosign.key`, which are your public and private keys, respectively.
-3. Go to the repository settings of your forked boxkit github repo. (**NOT your GitHub/Account settings**)
-   - Go to *Security* > *Secrets and variables* > *Actions*
-   - Click on *New repository secret*
-   - Create a new secret named `SIGNING_SECRET`
-   - Copy the content inside your `cosign.key` file to the textbox that appears when you create the `SIGNING_SECRET` repository secret.
-   - Alternatively, you can use GitHub's CLI client.
-     ```bash
-     gh secret set SIGNING_SECRET < cosign.key
-     ```
+* [`remote.Index`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/remote#Index)
+* [`random.Index`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/random#Index)
+* [`layout.ImageIndexFromPath`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/layout#ImageIndexFromPath)
 
-   **DONOT SHARE YOUR `cosign.key` FILE OR `SIGNING_SECRET` PUBLICLY, STORE THE `cosign.key` FILE SOMEWHERE SECURE AND DONOT INCLUDE IT IN YOUR GIT REPOSITORY.**
+#### Sinks
 
-4. Delete the `cosign.pub` key that exists on the repository's root folder and copy the `cosign.pub` file you created to the repository's root folder.
+* [`remote.WriteIndex`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/remote#WriteIndex)
+* [`layout.Write`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/layout#Write)
 
-Congratulations, you have successfully enabled container signing for all your custom images.
+### `v1.Layer`
 
-## Using the custom images
+#### Sources
 
-We use the default boxkit image as an example to show you how to create a distrobox/toolbox container using a custom image.
+* [`remote.Layer`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/remote#Layer)
+* [`tarball.LayerFromFile`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/tarball#LayerFromFile)
+* [`random.Layer`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/random#Layer)
+* [`stream.Layer`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/stream#Layer)
 
-If you use distrobox:
+#### Sinks
 
-    distrobox create -i ghcr.io/ublue-os/boxkit -n boxkit
-    distrobox enter boxkit
-    
-If you use toolbox:
+* [`remote.WriteLayer`](https://godoc.org/github.com/google/go-containerregistry/pkg/v1/remote#WriteLayer)
 
-    toolbox create -i ghcr.io/ublue-os/boxkit -c boxkit
-    toolbox enter boxkit
+## Overview
 
-**NOTE:**
-- You can use `chezmoi` to pull down your dotfiles and set up git sync.
-- It is recommended to use the [Ptyxis](https://flathub.org/apps/app.devsuite.Ptyxis) terminal, which provides seamless integration with various podman/distrobox/toolbx containers. 
+### `mutate`
 
-## Custom images built with boxkit
+The simplest use for these libraries is to read from one source and write to another.
 
-Here is a list of some awesome custom images built using boxkit.
+For example,
 
-- [DaVinci Box](https://github.com/zelikos/davincibox) - Container for DaVinci Resolve installation and runtime dependencies on Linux.
-- [obs-studio-portable](https://github.com/ublue-os/obs-studio-portable) - OCI container image of OBS Studio that bundles a curated collection of 3rd party plugins.
-- [bazzite-arch](https://github.com/ublue-os/bazzite-arch) - A ready-to-game Arch Linux based OCI designed for use exclusively in distrobox.
+ * `crane pull` is `remote.Image -> tarball.Write`,
+ * `crane push` is `tarball.Image -> remote.Write`,
+ * `crane cp` is `remote.Image -> remote.Write`.
 
-## Verification
+However, often you actually want to _change something_ about an image.
+This is the purpose of the [`mutate`](pkg/v1/mutate) package, which exposes
+some commonly useful things to change about an image.
 
-These images are signed with sisgstore's [cosign](https://docs.sigstore.dev/quickstart/quickstart-cosign/). You can verify the signature by downloading the `cosign.pub` key from this repo and running the following command:
+### `partial`
 
-    cosign verify --key cosign.pub ghcr.io/ublue-os/boxkit
-    
-If you're forking this repo you should [read the docs](https://docs.github.com/en/actions/security-guides/encrypted-secrets) on keeping secrets in github. You need to [generate a new keypair](https://docs.sigstore.dev/cosign/key_management/signing_with_self-managed_keys/) with cosign. The public key can be in your public repo (your users need it to check the signatures), and you can paste the private key in Settings -> Secrets -> Actions.
+If you're trying to use this library with a different source or sink than it already supports,
+it can be somewhat cumbersome. The `Image` and `Layer` interfaces are pretty wide, with a lot
+of redundant information. This is somewhat by design, because we want to expose this information
+as efficiently as possible where we can, but again it is a pain to implement yourself.
 
-![Alt](https://repobeats.axiom.co/api/embed/7c5f037d792c6deb1946e5bc040f64a0fc8abeab.svg "Repobeats analytics image")
+The purpose of the [`partial`](pkg/v1/partial) package is to make implementing a `v1.Image`
+much easier, by filling in all the derived accessors for you if you implement a minimal
+subset of `v1.Image`.
+
+### `transport`
+
+You might think our abstractions are bad and you just want to authenticate
+and send requests to a registry.
+
+This is the purpose of the [`transport`](pkg/v1/remote/transport) and [`authn`](pkg/authn) packages.
+
+## Tools
+
+This repo hosts some tools built on top of the library.
+
+### `crane`
+
+[`crane`](cmd/crane/README.md) is a tool for interacting with remote images
+and registries.
+
+### `gcrane`
+
+[`gcrane`](cmd/gcrane/README.md) is a GCR-specific variant of `crane` that has
+richer output for the `ls` subcommand and some basic garbage collection support.
+
+### `krane`
+
+[`krane`](cmd/krane/README.md) is a drop-in replacement for `crane` that supports
+common Kubernetes-based workload identity mechanisms using [`k8schain`](#k8schain)
+as a fallback to traditional authentication mechanisms.
+
+### `k8schain`
+
+[`k8schain`](pkg/authn/k8schain/README.md) implements the authentication
+semantics used by kubelets in a way that is easily consumable by this library.
+
+`k8schain` is not a standalone tool, but it is linked here for visibility.
+
+### Emeritus: [`ko`](https://github.com/google/ko)
+
+This tool was originally developed in this repo but has since been moved to its
+own repo.
