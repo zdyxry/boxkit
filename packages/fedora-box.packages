@@ -10,6 +10,7 @@ uv
 
 # Tools
 atuin
+chezmoi
 difftastic
 fd-find
 fzf
@@ -23,4 +24,3 @@ zoxide
 
 # Shell
 fish
-

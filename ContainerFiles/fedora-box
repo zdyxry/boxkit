@@ -2,7 +2,7 @@ FROM registry.fedoraproject.org/fedora-toolbox:42@sha256:f97828f2307aee244e8cd35
 
 LABEL com.github.containers.toolbox="true" \
       usage="This image is meant to be used with the toolbox or distrobox command" \
-      summary="A cloud-native terminal experience powered by Fedora" 
+      summary="A cloud-native terminal experience powered by Fedora"
 
 # RUN dnf -y upgrade
 
@@ -38,6 +38,7 @@ ARG TIMESTAMP
 COPY ./packages/fedora-box.packages /tmp/toolbox-packages
 
 RUN dnf copr enable -y varlad/zellij && \
+    dnf copr enable -y lihaohong/chezmoi && \
     dnf -y install $(grep -v '^#\|^$' /tmp/toolbox-packages) && \
     dnf clean all
 
