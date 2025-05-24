@@ -6,6 +6,8 @@ vim
 cargo
 golang
 rust
+python3
+python3-pip
 uv
 
 # Tools
@@ -15,6 +17,7 @@ difftastic
 fd-find
 fzf
 gh
+yq
 rclone
 ripgrep
 tig
