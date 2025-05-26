@@ -20,10 +20,12 @@ gh
 yq
 rclone
 ripgrep
+tailscale
 tig
 tokei
 zellij
 zoxide
+
 
 # Shell
 fish
